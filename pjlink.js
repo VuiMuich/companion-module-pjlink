@@ -72,6 +72,7 @@ instance.prototype.init_tcp = function(cb) {
 
 			if (self.currentStatus != self.STATUS_OK) {
 				self.status(self.STATUS_OK, 'Connected');
+				debug('Connected to projector');
 			}
 
 			self.connected = true;
@@ -80,6 +81,7 @@ instance.prototype.init_tcp = function(cb) {
 		self.socket.on('end', function () {
 			self.connected = false;
 			self.connecting = false;
+			debug('Disconnected');
 		});
 
 		self.socket.on('data', function (chunk) {
@@ -97,7 +99,10 @@ instance.prototype.init_tcp = function(cb) {
 		self.socket.on('receiveline', function (data) {
 			self.connect_time = Date.now();
 
+			debug('PJLINK: < ' + data);
+
 			if (data.match(/^PJLINK 0/)) {
+				debug('Projector does not need password');
 				self.passwordstring = '';
 
 				// no auth
@@ -108,6 +113,7 @@ instance.prototype.init_tcp = function(cb) {
 			}
 
 			if (data.match(/^PJLINK ERRA/)) {
+				debug('Password not accepted');
 				self.log('error', 'Authentication error. Password not accepted by projector');
 				self.commands.length = 0;
 				self.status(self.STATUS_ERROR, 'Authenticatione error');
@@ -120,11 +126,14 @@ instance.prototype.init_tcp = function(cb) {
 
 			var match;
 			if (match = data.match(/^PJLINK 1 (\S+)/)) {
+				debug("Projector wants password");
+				debug("Salt: '" + match[1] + "', password: " + self.config.password);
 				var digest = match[1] + ' ' + self.config.password;
 				var hasher = crypto.createHash('md5');
 				var hex = hasher.update(digest, 'utf-8').digest('hex');
 
 				self.passwordstring = hex;
+				debug("PWD String: " + hex);
 
 				// Shoot and forget, by protocol definition :/
 				if (typeof cb == 'function') {
