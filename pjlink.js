@@ -39,6 +39,7 @@ instance.prototype.init = function() {
 instance.prototype.init_tcp = function(cb) {
 	var self = this;
 	var receivebuffer = '';
+	var passwordstring = '';
 
 	if (self.socketTimer) {
 		clearInterval(self.socketTimer);
@@ -97,6 +98,8 @@ instance.prototype.init_tcp = function(cb) {
 			self.connect_time = Date.now();
 
 			if (data.match(/^PJLINK 0/)) {
+				passwordstring = '';
+
 				// no auth
 				if (typeof cb == 'function') {
 					cb();
@@ -120,7 +123,8 @@ instance.prototype.init_tcp = function(cb) {
 				var digest = match[1] + ' ' + self.config.password;
 				var hasher = crypto.createHash('md5');
 				var hex = hasher.update(digest, 'utf-8').digest('hex');
-				self.socket.write(hex);
+
+				passwordstring = hex;
 
 				// Shoot and forget, by protocol definition :/
 				if (typeof cb == 'function') {
@@ -131,7 +135,7 @@ instance.prototype.init_tcp = function(cb) {
 			if (self.commands.length) {
 				var cmd = self.commands.shift();
 
-				self.socket.write(cmd + "\r");
+				self.socket.write(passwordstring + cmd + "\r");
 			} else {
 				clearInterval(self.socketTimer);
 
@@ -140,12 +144,12 @@ instance.prototype.init_tcp = function(cb) {
 					if (self.commands.length > 0) {
 						var cmd = self.commands.shift();
 						self.connect_time = Date.now();
-						self.socket.write(cmd + "\r");
+						self.socket.write(passwordstring + cmd + "\r");
 						clearInterval(self.socketTimer);
 						delete self.socketTimer;
 					}
 
-					if (Date.now() - self.connect_time > 2000) {
+					if (Date.now() - self.connect_time > 4000) {
 
 						if (self.socket !== undefined && self.socket.destroy !== undefined) {
 							self.socket.destroy();
