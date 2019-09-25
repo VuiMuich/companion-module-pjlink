@@ -39,7 +39,7 @@ instance.prototype.init = function() {
 instance.prototype.init_tcp = function(cb) {
 	var self = this;
 	var receivebuffer = '';
-	var passwordstring = '';
+	self.passwordstring = '';
 
 	if (self.socketTimer) {
 		clearInterval(self.socketTimer);
@@ -98,7 +98,7 @@ instance.prototype.init_tcp = function(cb) {
 			self.connect_time = Date.now();
 
 			if (data.match(/^PJLINK 0/)) {
-				passwordstring = '';
+				self.passwordstring = '';
 
 				// no auth
 				if (typeof cb == 'function') {
@@ -124,7 +124,7 @@ instance.prototype.init_tcp = function(cb) {
 				var hasher = crypto.createHash('md5');
 				var hex = hasher.update(digest, 'utf-8').digest('hex');
 
-				passwordstring = hex;
+				self.passwordstring = hex;
 
 				// Shoot and forget, by protocol definition :/
 				if (typeof cb == 'function') {
@@ -135,7 +135,8 @@ instance.prototype.init_tcp = function(cb) {
 			if (self.commands.length) {
 				var cmd = self.commands.shift();
 
-				self.socket.write(passwordstring + cmd + "\r");
+				self.socket.write(self.passwordstring + cmd + "\r");
+				debug("Writing " + self.passwordstring + cmd + '<CR>');
 			} else {
 				clearInterval(self.socketTimer);
 
@@ -144,7 +145,8 @@ instance.prototype.init_tcp = function(cb) {
 					if (self.commands.length > 0) {
 						var cmd = self.commands.shift();
 						self.connect_time = Date.now();
-						self.socket.write(passwordstring + cmd + "\r");
+						self.socket.write(self.passwordstring + cmd + "\r");
+						debug("Writing " + self.passwordstring + cmd + '<CR>');
 						clearInterval(self.socketTimer);
 						delete self.socketTimer;
 					}
@@ -183,7 +185,8 @@ instance.prototype.send = function(cmd) {
 		self.init_tcp(function () {
 			self.connect_time = Date.now();
 
-			self.socket.write(cmd + "\r");
+			self.socket.write(self.passwordstring + cmd + "\r");
+			debug("CB:Writing " + self.passwordstring + cmd + "<CR>");
 		});
 	}
 };
